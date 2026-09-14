@@ -12,6 +12,7 @@ A small runnable Agent Runtime for OpenAI-compatible `/chat/completions` endpoin
 - Tool execution and multi-round `tool_calls -> tool result -> LLM`
 - FastAPI SSE endpoint
 - Built-in demo UI and optional Vue 3 frontend (`frontend/`)
+- Vue chat input supports image uploads, drag-and-drop, and clipboard paste; images are sent as OpenAI-compatible `image_url` content parts
 
 ## Prerequisites
 

@@ -14,8 +14,8 @@ watch(messages, async () => {
   if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
 }, { deep: true })
 
-async function handleSend(text: string) {
-  await sendMessage(text)
+async function handleSend(text: string, attachments = []) {
+  await sendMessage(text, attachments)
 }
 
 function newChat() {
@@ -51,7 +51,7 @@ function newChat() {
 
       <div v-else class="conversation">
         <template v-for="message in messages" :key="message.id">
-          <UserMessage v-if="message.role === 'user'" :content="message.content || ''" />
+          <UserMessage v-if="message.role === 'user'" :content="message.content || ''" :attachments="message.attachments || []" />
           <AssistantMessage v-else-if="message.turn" :turn="message.turn" />
           <div v-else class="assistant-error">{{ message.content }}</div>
         </template>
