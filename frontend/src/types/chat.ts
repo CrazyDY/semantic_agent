@@ -25,5 +25,12 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content?: string
+  attachments?: ImageAttachment[]
   turn?: AssistantTurn
+}
+
+export interface ImageAttachment {
+  id: string
+  name: string
+  url: string
 }
