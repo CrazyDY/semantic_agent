@@ -1,0 +1,24 @@
+[project]
+name = "semantic-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "chendeyu", email = "chendeyu2@h-partners.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "pydantic>=2.7,<3",
+    "pytest>=8,<9",
+    "python-dotenv>=1.2.3",
+    "requests>=2.32,<3",
+    "uvicorn[standard]>=0.30,<1",
+]
+
+[project.scripts]
+semantic-agent = "semantic_agent.api:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
