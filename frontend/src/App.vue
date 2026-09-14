@@ -6,7 +6,7 @@ import UserMessage from './components/UserMessage.vue'
 import { useChatStream } from './composables/useChatStream'
 
 const scrollArea = ref<HTMLElement | null>(null)
-const { messages, isStreaming, error, sendMessage, reset } = useChatStream()
+const { messages, isStreaming, error, sendMessage, reset, stopStreaming } = useChatStream()
 
 watch(messages, async () => {
   await nextTick()
@@ -14,13 +14,17 @@ watch(messages, async () => {
   if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
 }, { deep: true })
 
-async function handleSend(text: string) {
-  await sendMessage(text)
+async function handleSend(text: string, attachments = []) {
+  await sendMessage(text, attachments)
 }
 
 function newChat() {
   if (isStreaming.value) return
   reset()
+}
+
+function stopChat() {
+  stopStreaming()
 }
 </script>
 
@@ -34,7 +38,10 @@ function newChat() {
           <div class="brand-subtitle">OpenAI Compatible Agent</div>
         </div>
       </div>
-      <button class="new-chat" :disabled="isStreaming" @click="newChat">＋ 新对话</button>
+      <div class="topbar-actions">
+        <button v-if="isStreaming" class="stop-chat" @click="stopChat">■ 终止对话</button>
+        <button class="new-chat" :disabled="isStreaming" @click="newChat">＋ 新对话</button>
+      </div>
     </header>
 
     <main ref="scrollArea" class="chat-scroll">
@@ -51,7 +58,7 @@ function newChat() {
 
       <div v-else class="conversation">
         <template v-for="message in messages" :key="message.id">
-          <UserMessage v-if="message.role === 'user'" :content="message.content || ''" />
+          <UserMessage v-if="message.role === 'user'" :content="message.content || ''" :attachments="message.attachments || []" />
           <AssistantMessage v-else-if="message.turn" :turn="message.turn" />
           <div v-else class="assistant-error">{{ message.content }}</div>
         </template>

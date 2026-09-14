@@ -1,5 +1,5 @@
 import { nextTick, ref } from 'vue'
-import type { ChatMessage, ToolCallState } from '../types/chat'
+import type { ChatMessage, ImageAttachment, ToolCallState } from '../types/chat'
 import type { SemanticEvent } from '../types/events'
 
 interface EventHandlers {
@@ -14,6 +14,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
   const error = ref<string | null>(null)
 
   let activeAssistant: ChatMessage | null = null
+  let abortController: AbortController | null = null
 
   function ensureAssistant(data: Record<string, unknown>): AssistantTurnTarget {
     if (!activeAssistant || activeAssistant.role !== 'assistant' || !activeAssistant.turn) {
@@ -162,25 +163,37 @@ export function useChatStream(handlers: EventHandlers = {}) {
     }
   }
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, attachments: ImageAttachment[] = []) {
     const content = text.trim()
-    if (!content || isStreaming.value) return false
+    if ((!content && !attachments.length) || isStreaming.value) return false
 
     error.value = null
     isStreaming.value = true
     activeAssistant = null
+    abortController = new AbortController()
 
     messages.value.push({
       id: `user_${Date.now()}`,
       role: 'user',
       content,
+      attachments,
     })
 
     await nextTick()
 
     const payload = {
       messages: messages.value.map((message) => {
-        if (message.role === 'user') return { role: 'user', content: message.content ?? '' }
+        if (message.role === 'user') {
+          const attachments = message.attachments ?? []
+          if (!attachments.length) return { role: 'user', content: message.content ?? '' }
+          return {
+            role: 'user',
+            content: [
+              ...(message.content ? [{ type: 'text', text: message.content }] : []),
+              ...attachments.map((attachment) => ({ type: 'image_url', image_url: { url: attachment.url } })),
+            ],
+          }
+        }
         const tools = message.turn?.tools ?? []
         const content = message.turn?.content ?? ''
         if (tools.length) {
@@ -203,6 +216,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(payload),
+        signal: abortController.signal,
       })
 
       if (!response.ok || !response.body) {
@@ -212,6 +226,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
       await consumeSSE(response.body)
       return true
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return false
       error.value = err instanceof Error ? err.message : '请求失败'
       if (!activeAssistant) {
         messages.value.push({ id: `error_${Date.now()}`, role: 'assistant', content: error.value })
@@ -219,6 +234,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
       return false
     } finally {
       isStreaming.value = false
+      abortController = null
       if (activeAssistant?.turn) activeAssistant.turn.streaming = false
     }
   }
@@ -266,7 +282,11 @@ export function useChatStream(handlers: EventHandlers = {}) {
     error.value = null
   }
 
-  return { messages, isStreaming, error, sendMessage, reset }
+  function stopStreaming() {
+    abortController?.abort()
+  }
+
+  return { messages, isStreaming, error, sendMessage, reset, stopStreaming }
 }
 
 type AssistantTurnTarget = { message: ChatMessage; turn: NonNullable<ChatMessage['turn']> }
