@@ -13,11 +13,13 @@ dependencies = [
     "pytest>=8,<9",
     "python-dotenv>=1.2.3",
     "requests>=2.32,<3",
+    "tornado>=6.4,<7",
     "uvicorn[standard]>=0.30,<1",
 ]
 
 [project.scripts]
 semantic-agent = "semantic_agent.api:main"
+semantic-agent-tornado = "semantic_agent.tornado_api:main"
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]

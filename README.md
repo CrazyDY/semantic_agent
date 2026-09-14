@@ -56,6 +56,17 @@ Start the FastAPI server:
 uv run uvicorn semantic_agent.api:app --reload
 ```
 
+Alternatively, start the equivalent Tornado API (the FastAPI API remains
+unchanged):
+
+```bash
+uv run python -m semantic_agent.tornado_api
+```
+
+The Tornado server provides the same `GET /health` and SSE `POST /chat`
+endpoints and accepts the same OpenAI-compatible text or multimodal message
+content.
+
 Open `http://127.0.0.1:8000/` to use the built-in demo UI.
 
 Optional Vue 3 frontend:
