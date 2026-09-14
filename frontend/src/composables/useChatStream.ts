@@ -1,5 +1,5 @@
 import { nextTick, ref } from 'vue'
-import type { ChatMessage, ToolCallState } from '../types/chat'
+import type { ChatMessage, ImageAttachment, ToolCallState } from '../types/chat'
 import type { SemanticEvent } from '../types/events'
 
 interface EventHandlers {
@@ -162,9 +162,9 @@ export function useChatStream(handlers: EventHandlers = {}) {
     }
   }
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, attachments: ImageAttachment[] = []) {
     const content = text.trim()
-    if (!content || isStreaming.value) return false
+    if ((!content && !attachments.length) || isStreaming.value) return false
 
     error.value = null
     isStreaming.value = true
@@ -174,13 +174,24 @@ export function useChatStream(handlers: EventHandlers = {}) {
       id: `user_${Date.now()}`,
       role: 'user',
       content,
+      attachments,
     })
 
     await nextTick()
 
     const payload = {
       messages: messages.value.map((message) => {
-        if (message.role === 'user') return { role: 'user', content: message.content ?? '' }
+        if (message.role === 'user') {
+          const attachments = message.attachments ?? []
+          if (!attachments.length) return { role: 'user', content: message.content ?? '' }
+          return {
+            role: 'user',
+            content: [
+              ...(message.content ? [{ type: 'text', text: message.content }] : []),
+              ...attachments.map((attachment) => ({ type: 'image_url', image_url: { url: attachment.url } })),
+            ],
+          }
+        }
         const tools = message.turn?.tools ?? []
         const content = message.turn?.content ?? ''
         if (tools.length) {
