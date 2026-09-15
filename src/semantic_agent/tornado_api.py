@@ -15,7 +15,9 @@ from .agent import AgentRuntime
 from .config import Settings
 from .llm_client import OpenAICompatibleClient
 from .tools import default_registry
+
 from .tool_approval import ToolApprovalCoordinator
+
 
 
 def build_agent(settings: Settings | None = None) -> AgentRuntime:
@@ -41,9 +43,11 @@ class HealthHandler(tornado.web.RequestHandler):
 
 
 class ChatHandler(tornado.web.RequestHandler):
+
     def initialize(self, agent: AgentRuntime, approvals: ToolApprovalCoordinator) -> None:
         self.agent = agent
         self.approvals = approvals
+
 
     async def post(self) -> None:
         try:
@@ -71,6 +75,7 @@ class ChatHandler(tornado.web.RequestHandler):
         # AgentRuntime yields already-serialized semantic event payloads, so
         # this endpoint intentionally accepts both plain text and multimodal
         # OpenAI-compatible content arrays without transforming them.
+
         event_iterator = iter(self.agent.run(payload["messages"], extra_body, self.approvals.wait))
         while True:
             # The synchronous LLM stream may wait for a user decision. Pulling
@@ -81,10 +86,12 @@ class ChatHandler(tornado.web.RequestHandler):
             )
             if event is None:
                 break
+
             if self.request.connection.stream.closed():
                 break
             self.write(event.to_sse())
             await self.flush()
+
 
 
 class ToolApprovalHandler(tornado.web.RequestHandler):
@@ -115,6 +122,8 @@ def _next_event(event_iterator):
         return None
 
 
+
+
 def create_application(
     agent: AgentRuntime | None = None,
     settings: Settings | None = None,
@@ -122,11 +131,13 @@ def create_application(
     """Build an application with API routes equivalent to the FastAPI app."""
     configured = settings or Settings()
     runtime = agent or build_agent(configured)
+
     approvals = ToolApprovalCoordinator()
     return tornado.web.Application([
         (r"/health", HealthHandler, {"settings": configured}),
         (r"/chat", ChatHandler, {"agent": runtime, "approvals": approvals}),
         (r"/tool-approvals", ToolApprovalHandler, {"approvals": approvals}),
+
     ])
 
 

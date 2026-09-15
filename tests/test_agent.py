@@ -75,3 +75,4 @@ def test_agent_skips_tool_execution_when_user_rejects_approval():
     assert "tool_execute.start" not in types
     rejection = next(event for event in events if event.type == "tool_execute.end")
     assert rejection.data["error"] == "Tool execution was rejected by the user."
+

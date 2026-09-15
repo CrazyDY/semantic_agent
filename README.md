@@ -16,6 +16,7 @@ A small runnable Agent Runtime for OpenAI-compatible `/chat/completions` endpoin
 - The Vue UI can terminate an in-progress streamed response from the top bar
 - Tool calls pause for the user to approve or reject execution in the UI
 
+
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python 3.12+, pinned via `.python-version`)

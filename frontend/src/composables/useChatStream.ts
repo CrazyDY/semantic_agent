@@ -314,6 +314,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
   }
 
   return { messages, isStreaming, error, sendMessage, reset, stopStreaming, approveTool }
+
 }
 
 type AssistantTurnTarget = { message: ChatMessage; turn: NonNullable<ChatMessage['turn']> }
