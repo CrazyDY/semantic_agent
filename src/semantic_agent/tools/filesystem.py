@@ -15,9 +15,23 @@ class FileSystemTools:
 
     def _path(self, path: str) -> Path:
         candidate = (self.workspace_root / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
-        if not candidate.is_relative_to(self.workspace_root):
+        if not self._is_within_workspace(candidate):
             raise ValueError("Path must be inside the configured workspace")
         return candidate
+
+    def _is_within_workspace(self, path: Path) -> bool:
+        """Return whether *path* is under the workspace on every supported OS.
+
+        ``Path.is_relative_to`` is not available on every Windows Python
+        runtime in which the package is deployed.  ``relative_to`` has the
+        same containment semantics and also correctly rejects paths on a
+        different Windows drive.
+        """
+        try:
+            path.relative_to(self.workspace_root)
+        except ValueError:
+            return False
+        return True
 
     def read_file(self, path: str, encoding: str = "utf-8") -> dict[str, str]:
         target = self._path(path)

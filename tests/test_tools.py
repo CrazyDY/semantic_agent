@@ -29,6 +29,13 @@ def test_file_system_tools_reject_paths_outside_workspace(tmp_path):
         raise AssertionError("Expected a workspace-boundary error")
 
 
+def test_file_system_tools_use_relative_to_compatible_boundary_check(tmp_path):
+    tools = FileSystemTools(tmp_path)
+
+    assert tools._is_within_workspace(tmp_path / "inside.txt") is True
+    assert tools._is_within_workspace(tmp_path.parent / "outside.txt") is False
+
+
 def test_file_system_tools_require_recursive_deletion_for_directories(tmp_path):
     tools = FileSystemTools(tmp_path)
     tools.write_file("nested/file.txt", "content")
