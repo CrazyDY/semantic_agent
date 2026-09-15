@@ -96,3 +96,17 @@ The frontend never needs to parse provider-specific `choices[].delta` fields.
 When Chat Completions returns `finish_reason=tool_calls`, the runtime does **not** end the run. It appends the complete assistant `tool_calls`, executes each registered tool, appends `role=tool` results, and calls the model again.
 
 Replace `default_registry()` with your real business tools.
+
+## 内置工具
+
+`semantic_agent.tools` 现在是一个包，可分别导入 `ToolRegistry`、`FileSystemTools` 和
+`ShellTools`。默认注册表除了演示天气工具外，还提供下列工作区工具：
+
+- `read_file`、`write_file`、`list_files`、`create_directory`
+- `copy_path`、`move_path`、`delete_path`
+- `run_shell_command`
+
+通过 `default_registry(workspace_root=...)` 指定工作区根目录。文件工具会拒绝根目录之外
+的路径（包括经由符号链接逃逸的路径）；删除目录必须明确传入 `recursive=true`，且不能删除
+工作区根目录。Shell 命令从工作区根目录启动，默认超时 30 秒、最长 60 秒。所有工具调用仍会
+沿用 UI 的用户审批流程。
