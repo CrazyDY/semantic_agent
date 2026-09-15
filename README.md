@@ -15,6 +15,7 @@ A small runnable Agent Runtime for OpenAI-compatible `/chat/completions` endpoin
 - Vue chat input supports image uploads, drag-and-drop, and clipboard paste; images are sent as OpenAI-compatible `image_url` content parts
 - The Vue UI can terminate an in-progress streamed response from the top bar
 
+
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python 3.12+, pinned via `.python-version`)
