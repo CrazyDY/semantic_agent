@@ -12,6 +12,9 @@ A small runnable Agent Runtime for OpenAI-compatible `/chat/completions` endpoin
 - Tool execution and multi-round `tool_calls -> tool result -> LLM`
 - FastAPI SSE endpoint
 - Built-in demo UI and optional Vue 3 frontend (`frontend/`)
+- Vue chat input supports image uploads, drag-and-drop, and clipboard paste; images are sent as OpenAI-compatible `image_url` content parts
+- The Vue UI can terminate an in-progress streamed response from the top bar
+- Tool calls pause for the user to approve or reject execution in the UI
 
 ## Prerequisites
 
@@ -54,6 +57,17 @@ Start the FastAPI server:
 ```bash
 uv run uvicorn semantic_agent.api:app --reload
 ```
+
+Alternatively, start the equivalent Tornado API (the FastAPI API remains
+unchanged):
+
+```bash
+uv run python -m semantic_agent.tornado_api
+```
+
+The Tornado server provides the same `GET /health` and SSE `POST /chat`
+endpoints and accepts the same OpenAI-compatible text or multimodal message
+content.
 
 Open `http://127.0.0.1:8000/` to use the built-in demo UI.
 

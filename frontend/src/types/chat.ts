@@ -4,7 +4,7 @@ export interface ToolCallState {
   index: number
   arguments: string
   parsedArguments: unknown | null
-  status: 'calling' | 'running' | 'success' | 'error'
+  status: 'calling' | 'awaiting_approval' | 'running' | 'success' | 'error'
   result: unknown | null
   error: string | null
 }
@@ -25,5 +25,12 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content?: string
+  attachments?: ImageAttachment[]
   turn?: AssistantTurn
+}
+
+export interface ImageAttachment {
+  id: string
+  name: string
+  url: string
 }

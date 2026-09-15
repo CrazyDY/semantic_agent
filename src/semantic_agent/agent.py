@@ -20,6 +20,7 @@ class AgentRuntime:
         self,
         messages: list[dict[str, Any]],
         extra_body: dict[str, Any] | None = None,
+        tool_approval=None,
     ) -> Iterator[AgentEvent]:
         run_id = f"run_{uuid.uuid4().hex[:12]}"
         working_messages = [dict(m) for m in messages]
@@ -86,6 +87,36 @@ class AgentRuntime:
                 })
 
                 for state in adapter.tool_calls.values():
+                    if tool_approval:
+                        yield AgentEvent("tool_approval.request", {
+                            "run_id": run_id,
+                            "step_id": step_id,
+                            "call_id": state.call_id,
+                            "name": state.name,
+                            "arguments": _safe_parse_arguments(state.arguments),
+                        })
+                        approved = tool_approval(run_id, state.call_id)
+                    else:
+                        approved = True
+
+                    if not approved:
+                        result = {"error": "Tool execution was rejected by the user."}
+                        tool_error = "Tool execution was rejected by the user."
+                        working_messages.append({
+                            "role": "tool",
+                            "tool_call_id": state.call_id,
+                            "content": json.dumps(result, ensure_ascii=False),
+                        })
+                        yield AgentEvent("tool_execute.end", {
+                            "run_id": run_id,
+                            "step_id": step_id,
+                            "call_id": state.call_id,
+                            "name": state.name,
+                            "result": result,
+                            "error": tool_error,
+                        })
+                        continue
+
                     yield AgentEvent("tool_execute.start", {
                         "run_id": run_id,
                         "step_id": step_id,
@@ -138,3 +169,10 @@ def _parse_object(raw: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("Tool arguments must be a JSON object")
     return value
+
+
+def _safe_parse_arguments(raw: str) -> dict[str, Any] | None:
+    try:
+        return _parse_object(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None

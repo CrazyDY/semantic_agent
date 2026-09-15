@@ -6,6 +6,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
 const props = defineProps<{ turn: AssistantTurn }>()
+const emit = defineEmits<{ 'tool-approval': [value: { callId: string; approved: boolean }] }>()
 
 marked.setOptions({
   gfm: true,
@@ -33,7 +34,7 @@ function renderMarkdown(text: string) {
         :expanded="turn.thinkingExpanded"
       />
 
-      <ToolCallBlock v-for="tool in turn.tools" :key="tool.callId" :tool="tool" />
+      <ToolCallBlock v-for="tool in turn.tools" :key="tool.callId" :tool="tool" @approve="emit('tool-approval', { callId: $event.callId, approved: $event.approved })" />
 
       <div v-if="turn.content" class="markdown-content" v-html="renderMarkdown(turn.content)" />
       <span v-if="turn.streaming" class="streaming-cursor" />

@@ -47,3 +47,31 @@ def test_agent_executes_tool_then_calls_llm_again():
     ]
     assert llm.calls == 2
     assert any(m.get("role") == "tool" for m in llm.requests[1])
+
+
+def test_agent_forwards_multimodal_user_content_to_the_llm():
+    llm = FakeLLM()
+    agent = AgentRuntime(llm, ToolExecutorRegistry(), max_rounds=3)
+    content = [
+        {"type": "text", "text": "这张图片里有什么？"},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA=="}},
+    ]
+
+    list(agent.run([{"role": "user", "content": content}]))
+
+    assert llm.requests[0][0]["content"] == content
+
+
+def test_agent_skips_tool_execution_when_user_rejects_approval():
+    llm = FakeLLM()
+    agent = AgentRuntime(llm, ToolExecutorRegistry(), max_rounds=3)
+    events = list(agent.run(
+        [{"role": "user", "content": "2+3?"}],
+        tool_approval=lambda run_id, call_id: False,
+    ))
+
+    types = [event.type for event in events]
+    assert "tool_approval.request" in types
+    assert "tool_execute.start" not in types
+    rejection = next(event for event in events if event.type == "tool_execute.end")
+    assert rejection.data["error"] == "Tool execution was rejected by the user."

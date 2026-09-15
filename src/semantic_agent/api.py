@@ -11,6 +11,7 @@ from .agent import AgentRuntime
 from .config import Settings
 from .llm_client import OpenAICompatibleClient
 from .tools import default_registry
+from .tool_approval import ToolApprovalCoordinator
 
 
 settings = Settings()
@@ -23,6 +24,7 @@ llm = OpenAICompatibleClient(
 )
 tools = default_registry()
 agent = AgentRuntime(llm, tools, max_rounds=settings.AGENT_MAX_ROUNDS)
+tool_approvals = ToolApprovalCoordinator()
 
 app = FastAPI(title="Semantic Agent Event Runtime", version="1.0.0")
 
@@ -30,6 +32,12 @@ app = FastAPI(title="Semantic Agent Event Runtime", version="1.0.0")
 class ChatRequest(BaseModel):
     messages: list[dict[str, Any]] = Field(min_length=1)
     extra_body: dict[str, Any] | None = None
+
+
+class ToolApprovalRequest(BaseModel):
+    run_id: str
+    call_id: str
+    approved: bool
 
 
 @app.get("/health")
@@ -40,7 +48,7 @@ def health() -> dict[str, Any]:
 @app.post("/chat")
 def chat(request: ChatRequest) -> StreamingResponse:
     def generate():
-        for event in agent.run(request.messages, request.extra_body):
+        for event in agent.run(request.messages, request.extra_body, tool_approvals.wait):
             yield event.to_sse()
 
     return StreamingResponse(
@@ -52,6 +60,12 @@ def chat(request: ChatRequest) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post("/tool-approvals")
+def approve_tool(request: ToolApprovalRequest) -> dict[str, bool]:
+    tool_approvals.decide(request.run_id, request.call_id, request.approved)
+    return {"ok": True}
 
 
 def main() -> None:
@@ -90,4 +104,3 @@ async function send(){clearLog();const q=document.getElementById('input').value;
 </script>
 </body>
 </html>'''
-
