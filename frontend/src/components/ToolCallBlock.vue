@@ -3,10 +3,13 @@ import { computed, ref } from 'vue'
 import type { ToolCallState } from '../types/chat'
 
 const props = defineProps<{ tool: ToolCallState }>()
+const emit = defineEmits<{ approve: [value: { callId: string; approved: boolean }] }>()
 const expanded = ref(false)
+const submittingApproval = ref(false)
 
 const statusText = computed(() => ({
   calling: '准备调用',
+  awaiting_approval: '等待确认',
   running: '执行中',
   success: '已完成',
   error: '失败',
@@ -23,6 +26,12 @@ const resultText = computed(() => {
   if (props.tool.result === null) return ''
   try { return JSON.stringify(props.tool.result, null, 2) } catch { return String(props.tool.result) }
 })
+
+function approve(approved: boolean) {
+  if (submittingApproval.value) return
+  submittingApproval.value = true
+  emit('approve', { callId: props.tool.callId, approved })
+}
 </script>
 
 <template>
@@ -41,6 +50,13 @@ const resultText = computed(() => {
         <pre>{{ resultText }}</pre>
       </template>
       <div v-if="tool.error" class="tool-error">{{ tool.error }}</div>
+    </div>
+    <div v-if="tool.status === 'awaiting_approval'" class="tool-approval">
+      <span>是否允许执行此工具？</span>
+      <div>
+        <button class="tool-deny" :disabled="submittingApproval" @click="approve(false)">拒绝</button>
+        <button class="tool-allow" :disabled="submittingApproval" @click="approve(true)">允许执行</button>
+      </div>
     </div>
   </div>
 </template>

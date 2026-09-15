@@ -60,3 +60,19 @@ def test_agent_forwards_multimodal_user_content_to_the_llm():
     list(agent.run([{"role": "user", "content": content}]))
 
     assert llm.requests[0][0]["content"] == content
+
+
+def test_agent_skips_tool_execution_when_user_rejects_approval():
+    llm = FakeLLM()
+    agent = AgentRuntime(llm, ToolExecutorRegistry(), max_rounds=3)
+    events = list(agent.run(
+        [{"role": "user", "content": "2+3?"}],
+        tool_approval=lambda run_id, call_id: False,
+    ))
+
+    types = [event.type for event in events]
+    assert "tool_approval.request" in types
+    assert "tool_execute.start" not in types
+    rejection = next(event for event in events if event.type == "tool_execute.end")
+    assert rejection.data["error"] == "Tool execution was rejected by the user."
+

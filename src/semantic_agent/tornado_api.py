@@ -16,6 +16,9 @@ from .config import Settings
 from .llm_client import OpenAICompatibleClient
 from .tools import default_registry
 
+from .tool_approval import ToolApprovalCoordinator
+
+
 
 def build_agent(settings: Settings | None = None) -> AgentRuntime:
     """Create the runtime used by the Tornado application."""
@@ -40,8 +43,11 @@ class HealthHandler(tornado.web.RequestHandler):
 
 
 class ChatHandler(tornado.web.RequestHandler):
-    def initialize(self, agent: AgentRuntime) -> None:
+
+    def initialize(self, agent: AgentRuntime, approvals: ToolApprovalCoordinator) -> None:
         self.agent = agent
+        self.approvals = approvals
+
 
     async def post(self) -> None:
         try:
@@ -69,11 +75,53 @@ class ChatHandler(tornado.web.RequestHandler):
         # AgentRuntime yields already-serialized semantic event payloads, so
         # this endpoint intentionally accepts both plain text and multimodal
         # OpenAI-compatible content arrays without transforming them.
-        for event in self.agent.run(payload["messages"], extra_body):
+
+        event_iterator = iter(self.agent.run(payload["messages"], extra_body, self.approvals.wait))
+        while True:
+            # The synchronous LLM stream may wait for a user decision. Pulling
+            # it in a worker keeps Tornado's IOLoop free to receive the
+            # corresponding /tool-approvals request.
+            event = await tornado.ioloop.IOLoop.current().run_in_executor(
+                None, _next_event, event_iterator,
+            )
+            if event is None:
+                break
+
             if self.request.connection.stream.closed():
                 break
             self.write(event.to_sse())
             await self.flush()
+
+
+
+class ToolApprovalHandler(tornado.web.RequestHandler):
+    def initialize(self, approvals: ToolApprovalCoordinator) -> None:
+        self.approvals = approvals
+
+    def post(self) -> None:
+        try:
+            payload = json_decode(self.request.body)
+            run_id = payload["run_id"]
+            call_id = payload["call_id"]
+            approved = payload["approved"]
+        except (KeyError, TypeError, ValueError):
+            self.send_error(400, reason="run_id, call_id, and approved are required")
+            return
+        if not isinstance(run_id, str) or not isinstance(call_id, str) or not isinstance(approved, bool):
+            self.send_error(400, reason="run_id/call_id must be strings and approved must be a boolean")
+            return
+        self.set_header("Content-Type", "application/json")
+        self.approvals.decide(run_id, call_id, approved)
+        self.write({"ok": True})
+
+
+def _next_event(event_iterator):
+    try:
+        return next(event_iterator)
+    except StopIteration:
+        return None
+
+
 
 
 def create_application(
@@ -83,9 +131,13 @@ def create_application(
     """Build an application with API routes equivalent to the FastAPI app."""
     configured = settings or Settings()
     runtime = agent or build_agent(configured)
+
+    approvals = ToolApprovalCoordinator()
     return tornado.web.Application([
         (r"/health", HealthHandler, {"settings": configured}),
-        (r"/chat", ChatHandler, {"agent": runtime}),
+        (r"/chat", ChatHandler, {"agent": runtime, "approvals": approvals}),
+        (r"/tool-approvals", ToolApprovalHandler, {"approvals": approvals}),
+
     ])
 
 

@@ -6,7 +6,8 @@ import UserMessage from './components/UserMessage.vue'
 import { useChatStream } from './composables/useChatStream'
 
 const scrollArea = ref<HTMLElement | null>(null)
-const { messages, isStreaming, error, sendMessage, reset, stopStreaming } = useChatStream()
+const { messages, isStreaming, error, sendMessage, reset, stopStreaming, approveTool } = useChatStream()
+
 
 watch(messages, async () => {
   await nextTick()
@@ -26,6 +27,11 @@ function newChat() {
 function stopChat() {
   stopStreaming()
 }
+
+async function handleToolApproval(runId: string | null, callId: string, approved: boolean) {
+  await approveTool(runId, callId, approved)
+}
+
 </script>
 
 <template>
@@ -59,7 +65,8 @@ function stopChat() {
       <div v-else class="conversation">
         <template v-for="message in messages" :key="message.id">
           <UserMessage v-if="message.role === 'user'" :content="message.content || ''" :attachments="message.attachments || []" />
-          <AssistantMessage v-else-if="message.turn" :turn="message.turn" />
+          <AssistantMessage v-else-if="message.turn" :turn="message.turn" @tool-approval="handleToolApproval(message.turn.runId, $event.callId, $event.approved)" />
+
           <div v-else class="assistant-error">{{ message.content }}</div>
         </template>
         <div v-if="error" class="error-banner">{{ error }}</div>

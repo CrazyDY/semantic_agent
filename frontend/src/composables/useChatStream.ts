@@ -7,6 +7,7 @@ interface EventHandlers {
 }
 
 const API_URL = import.meta.env.VITE_API_URL || '/chat'
+const TOOL_APPROVAL_URL = API_URL.replace(/\/chat(?:\?.*)?$/, '/tool-approvals')
 
 export function useChatStream(handlers: EventHandlers = {}) {
   const messages = ref<ChatMessage[]>([])
@@ -134,6 +135,13 @@ export function useChatStream(handlers: EventHandlers = {}) {
         const { turn } = ensureAssistant(data)
         const tool = findTool(turn, data.call_id ? String(data.call_id) : undefined)
         if (tool) tool.status = 'running'
+        break
+      }
+
+      case 'tool_approval.request': {
+        const { turn } = ensureAssistant(data)
+        const tool = findTool(turn, data.call_id ? String(data.call_id) : undefined)
+        if (tool) tool.status = 'awaiting_approval'
         break
       }
 
@@ -286,7 +294,27 @@ export function useChatStream(handlers: EventHandlers = {}) {
     abortController?.abort()
   }
 
-  return { messages, isStreaming, error, sendMessage, reset, stopStreaming }
+  async function approveTool(runId: string | null, callId: string, approved: boolean) {
+    if (!runId) {
+      error.value = '无法确认工具调用：缺少运行标识。'
+      return false
+    }
+    try {
+      const response = await fetch(TOOL_APPROVAL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ run_id: runId, call_id: callId, approved }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '提交工具授权失败'
+      return false
+    }
+  }
+
+  return { messages, isStreaming, error, sendMessage, reset, stopStreaming, approveTool }
+
 }
 
 type AssistantTurnTarget = { message: ChatMessage; turn: NonNullable<ChatMessage['turn']> }

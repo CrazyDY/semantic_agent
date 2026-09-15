@@ -12,6 +12,7 @@ export type SemanticEventType =
   | 'tool_call.start'
   | 'tool_call.delta'
   | 'tool_call.end'
+  | 'tool_approval.request'
   | 'tool_execute.start'
   | 'tool_execute.end'
   | 'error'
