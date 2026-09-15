@@ -14,6 +14,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
   const error = ref<string | null>(null)
 
   let activeAssistant: ChatMessage | null = null
+  let abortController: AbortController | null = null
 
   function ensureAssistant(data: Record<string, unknown>): AssistantTurnTarget {
     if (!activeAssistant || activeAssistant.role !== 'assistant' || !activeAssistant.turn) {
@@ -169,6 +170,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
     error.value = null
     isStreaming.value = true
     activeAssistant = null
+    abortController = new AbortController()
 
     messages.value.push({
       id: `user_${Date.now()}`,
@@ -214,6 +216,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(payload),
+        signal: abortController.signal,
       })
 
       if (!response.ok || !response.body) {
@@ -223,6 +226,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
       await consumeSSE(response.body)
       return true
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return false
       error.value = err instanceof Error ? err.message : '请求失败'
       if (!activeAssistant) {
         messages.value.push({ id: `error_${Date.now()}`, role: 'assistant', content: error.value })
@@ -230,6 +234,7 @@ export function useChatStream(handlers: EventHandlers = {}) {
       return false
     } finally {
       isStreaming.value = false
+      abortController = null
       if (activeAssistant?.turn) activeAssistant.turn.streaming = false
     }
   }
@@ -277,7 +282,11 @@ export function useChatStream(handlers: EventHandlers = {}) {
     error.value = null
   }
 
-  return { messages, isStreaming, error, sendMessage, reset }
+  function stopStreaming() {
+    abortController?.abort()
+  }
+
+  return { messages, isStreaming, error, sendMessage, reset, stopStreaming }
 }
 
 type AssistantTurnTarget = { message: ChatMessage; turn: NonNullable<ChatMessage['turn']> }

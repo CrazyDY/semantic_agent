@@ -14,12 +14,15 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .app-shell { height: 100vh; display: flex; flex-direction: column; background: #fff; }
 .topbar { height: 64px; flex: 0 0 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-bottom: 1px solid #ececec; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
 .brand { display: flex; align-items: center; gap: 11px; }
 .brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #111827; color: #fff; font-size: 16px; }
 .brand-title { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
 .brand-subtitle { margin-top: 2px; font-size: 11px; color: #8b929b; }
 .new-chat { border: 0; background: #f5f5f5; color: #343a40; border-radius: 9px; padding: 8px 12px; font-size: 13px; }
 .new-chat:hover { background: #ececec; }
+.stop-chat { border: 1px solid #f0c5c0; background: #fff6f5; color: #b42318; border-radius: 9px; padding: 8px 12px; font-size: 13px; }
+.stop-chat:hover { background: #ffebe8; }
 
 .chat-scroll { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
 .welcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 48px 20px 160px; text-align: center; }
